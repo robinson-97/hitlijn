@@ -218,20 +218,21 @@ function playerHtml(){return ''}
 
 /* ---------- spelstatus ---------- */
 let G=null;
-const CATS=[{k:'decade',n:'Decennium',q:'In welk decennium is dit nummer uitgekomen?'},{k:'artist',n:'Artiest',q:'Wie zingt dit?'},{k:'title',n:'Titel',q:'Hoe heet dit nummer?'},{k:'year',n:'Exact jaar',q:'In welk jaar is dit uitgekomen?'},{k:'ba',n:'Voor / na 2000',q:'Is dit nummer van vóór of ná 2000?'}];
+const CATS=[{k:'decade',n:'Decennium',q:'In welk decennium is dit nummer uitgekomen?'},{k:'artist',n:'Artiest',q:'Wie zingt dit? (zanger of band)'},{k:'ba',n:'Voor / na 2000',q:'Is dit nummer van vóór of ná 2000?'},{k:'y4',n:'Jaar ±4',q:'In welk jaar is dit uitgekomen? Binnen 4 jaar ernaast telt goed.'},{k:'year',n:'Exact jaar',q:'In welk jaar is dit uitgekomen? Alleen het exacte jaar telt.'}];
+const LEVELS={easy:['decade','artist','ba','y4'],expert:['decade','artist','y4','year']};
 function catAnswer(c,s){
-  switch(c){case 'decade':return Math.floor(s.year/10)*10+"'s";case 'artist':return s.artist;case 'title':return s.title;case 'year':return s.year;case 'ba':return s.year<2000?'Vóór 2000':'Vanaf 2000'}
+  switch(c){case 'decade':return Math.floor(s.year/10)*10+"'s";case 'artist':return s.artist;case 'y4':return s.year+' (goed: '+(s.year-4)+' t/m '+(s.year+4)+')';case 'year':return s.year;case 'ba':return s.year<2000?'Vóór 2000':'Vanaf 2000'}
 }
 
 function newGame(mode,names,opts){
   G={mode,players:names.map(n=>({name:n,tl:[],tokens:2,card:null,marks:{}})),cur:0,deck:shuffle(SONGS),song:null,phase:'draw',target:opts.target,log:[]};
   if(mode==='classic'){G.players.forEach(p=>{p.tl=[drawCard()]})}
-  else{G.phase='spin';G.players.forEach(p=>{p.card=makeCard()});G.cat=null;G.contenders=null;G.pending=[]}
+  else{G.cats=LEVELS[opts.level];G.phase='spin';G.players.forEach(p=>{p.card=makeCard()});G.cat=null;G.contenders=null;G.pending=[]}
   render();
 }
 function drawCard(){if(!G.deck.length)G.deck=shuffle(SONGS);return G.deck.pop()}
 function makeCard(){
-  const cats=shuffle(CATS.map(c=>c.k)).slice(0,4),rp=shuffle([0,1,2,3]),cp=shuffle([0,1,2,3]);
+  const cats=shuffle(G.cats),rp=shuffle([0,1,2,3]),cp=shuffle([0,1,2,3]);
   return rp.map((r,i)=>cp.map((c,j)=>({cat:cats[(r+c)%4],on:false})));
 }
 
@@ -245,7 +246,7 @@ function render(){
   if(!G){app.innerHTML=setupHtml();return}
   app.innerHTML=G.mode==='classic'?classicHtml():bingoHtml();
 }
-let setup={mode:'classic',names:['Speler 1','Speler 2','Speler 3'],target:10};
+let setup={mode:'classic',names:['Speler 1','Speler 2'],target:10,level:'easy'};
 function setupHtml(){
   const warn=location.protocol==='file:'?`<div class="banner">ℹ️ Je opent het bestand direct, dan speelt de muziek in een los YouTube-venster. Wil je dat de muziek <b>onzichtbaar op de achtergrond</b> speelt? Start het spel dan met <b>start.bat</b> (Windows) of <b>start.command</b> (Mac).</div>`:'';
   return `${warn}
@@ -257,6 +258,7 @@ function setupHtml(){
     <button class="ghost" onclick="if(setup.names.length<10){setup.names.push('Speler '+(setup.names.length+1));render()}">+ Speler</button>
   </div>
   ${setup.mode=='classic'?`<div class="card"><h3>Winnen bij</h3><select onchange="setup.target=+this.value"><option value="7" ${setup.target==7?'selected':''}>7 kaarten (kort)</option><option value="10" ${setup.target==10?'selected':''}>10 kaarten (normaal)</option><option value="15" ${setup.target==15?'selected':''}>15 kaarten (lang)</option></select></div>`:''}
+  ${setup.mode=='bingo'?`<div class="card"><h3>Niveau (zijde A / B van het bord)</h3><select onchange="setup.level=this.value"><option value="easy" ${setup.level=='easy'?'selected':''}>Makkelijk: decennium, artiest, voor/na 2000, jaar ±4</option><option value="expert" ${setup.level=='expert'?'selected':''}>Expert: decennium, artiest, jaar ±4, exact jaar</option></select></div>`:''}
   <div class="row">
     <button class="pri big grow" onclick="startGame()">▶ Start spel</button>
     <button onclick="showRules()">📖 Spelregels</button>
@@ -266,7 +268,7 @@ function setupHtml(){
 }
 function startGame(){
   const names=setup.names.map((n,i)=>n.trim()||'Speler '+(i+1));
-  newGame(setup.mode,names,{target:setup.target});
+  newGame(setup.mode,names,{target:setup.target,level:setup.level});
 }
 
 /* ---- klassiek ---- */
@@ -374,7 +376,7 @@ function bingoHtml(){
       <button class="pri big" onclick="bSpin()" ${G.spinning?'disabled':''}>Draai de discobal</button></div>`;
   }else{
     const c=CATS.find(x=>x.k===G.cat),ci=CATS.indexOf(c);
-    body=`${act}<div class="card" style="text-align:center"><span class="cat c${ci} big">${c.n}</span><p class="big">${c.q}</p><p class="mut">Iedereen antwoordt hardop of schrijft het op. Daarna onthullen.</p></div>`+playerHtml();
+    body=`${act}<div class="card" style="text-align:center"><span class="cat c${ci} big">${c.n}</span><p class="big">${c.q}</p><p class="mut">Iedereen schrijft zijn antwoord op voordat de tijd om is. Daarna onthullen.</p><div class="big" id="timer">⏱ 25</div></div>`+playerHtml();
     if(G.phase==='listen'){body+=`<div class="card"><button class="pri big" onclick="bReveal()">👁 Onthul antwoord</button></div>`}
     if(G.phase==='reveal'){
       const s=G.song,pool=G.contenders||G.players.map((_,i)=>i);
@@ -389,16 +391,17 @@ function bingoHtml(){
     }
   }
   const cards=`<div class="card"><h3>Scorekaarten</h3><div class="cards">${G.players.map((p,i)=>`<div class="${i===(G.pending[0]??-1)&&G.phase==='mark'?'cur':''}"><b>${esc(p.name)}</b>${cardHtml(p,i,G.phase==='mark'&&G.pending[0]===i)}</div>`).join('')}</div>
-    <p class="mut">Een rij of kolom met 4 verschillende categorieën vol = HITSTER! Staat de categorie niet op jouw kaart, dan krijg je geen vakje.</p></div>`;
+    <p class="mut">Een rij of kolom met 4 verschillende categorieën vol = HITSTER! Per categorie markeer je één vakje.</p></div>`;
   return scoreHtml()+body+cards;
 }
 function bSpin(){
   if(popupMode())window.open('about:blank','hl_yt','popup=yes,width=420,height=250,left=40,top=40');
   G.spinning=true;render();
   const el=$('#disco');let n=0;
-  const t=setInterval(()=>{const c=CATS[Math.random()*5|0];el.nextElementSibling&&0;el.title=c.n;n++;
-    if(n>14){clearInterval(t);G.spinning=false;G.cat=CATS[Math.random()*5|0].k;G.song=drawCard();G.phase='listen';render();playSong(G.song)}},150);
+  const t=setInterval(()=>{n++;
+    if(n>14){clearInterval(t);G.spinning=false;G.cat=G.cats[Math.random()*4|0];G.song=drawCard();G.phase='listen';G.t0=Date.now();render();playSong(G.song)}},150);
 }
+setInterval(()=>{const t=document.getElementById('timer');if(!t||!G||G.phase!=='listen')return;const r=25-Math.floor((Date.now()-G.t0)/1000);t.textContent=r>0?'⏱ '+r:'⏰ Tijd! Onthul het antwoord.'},250);
 function bReveal(){ytStop();G.phase='reveal';render()}
 function bProcess(){
   const ok=[...document.querySelectorAll('.okc:checked')].map(x=>+x.value);
@@ -437,12 +440,14 @@ function showRules(){modal(`
 <li>Wie als eerste het doel haalt (standaard 10 kaarten) wint.</li></ul>
 <h3>🪩 Bingo</h3>
 <ul>
-<li>Elke speler heeft een scorekaart van 4×4 vakjes. Op elke rij en kolom staan 4 <i>verschillende</i> categorieën.</li>
-<li>Draai de discobal: die bepaalt de categorie — Decennium, Artiest, Titel, Exact jaar of Voor/na 2000.</li>
-<li>Het nummer wordt afgespeeld; iedereen antwoordt. Na de onthulling vink je aan wie het goed had; die spelers markeren één vakje van die categorie op hun kaart.</li>
-<li>Wie als eerste een volledige <b>rij of kolom</b> heeft, roept <b>HITSTER</b> en wint.</li>
-<li><b>Gelijkspel:</b> meerdere spelers tegelijk een lijn? Dan volgen er vragen tussen alleen die spelers: wie als eerste (als enige) goed antwoordt, wint.</li></ul>
-<p class="mut">Bron: de officiële Hitster-Bingo-uitleg (decennium/artiest/exact jaar/voor-na-2000 raden, scorekaarten, discobal, eerste rij of kolom wint; 2–10 spelers; tiebreak = eerste goede antwoord). Het exacte kaartontwerp van de doos wijkt waarschijnlijk af; dit is een speelbare nabootsing. Dit spel is niet gelieerd aan Hitster.</p>`)}
+<li>Elke speler heeft een scorekaart van 4×4 vakjes in 4 kleuren/categorieën; op elke rij en kolom staat elke categorie precies één keer. Niveau <b>makkelijk</b> (zijde A) of <b>expert</b> (zijde B) bepaalt welke 4 categorieën je speelt.</li>
+<li>Wie aan de beurt is draait de discobal: die kiest de categorie voor <b>alle spelers tegelijk</b>.</li>
+<li>Het nummer wordt afgespeeld en er loopt een timer van 25 seconden. Iedereen schrijft zijn antwoord op; daarna wordt het antwoord onthuld.</li>
+<li>Wie het goed had, zet een kruisje in een vakje van die categorie op zijn eigen kaart.</li>
+<li>De eerste met een volledige <b>rij of kolom</b> roept <b>HITSTER</b> en wint.</li>
+<li><b>Gelijkspel:</b> hebben meerdere spelers tegelijk een lijn, dan volgen er extra vragen tussen alleen hen: wie als eerste (als enige) goed antwoordt, wint.</li>
+<li><b>2 spelers:</b> de beurt wisselt telkens; beiden antwoorden bij elk nummer.</li></ul>
+<p class="mut">Bron: de officiële Hitster-Bingo-uitleg (discobal kiest de categorie voor iedereen, 25 seconden timer, kruisje in de kleur van de categorie, eerste rij of kolom met vier verschillende categorieën wint, beginner- en expertzijde, 2–10 spelers). Het exacte kaartontwerp van de doos wijkt waarschijnlijk af; dit is een speelbare nabootsing. Dit spel is niet gelieerd aan Hitster.</p>`)}
 function showSongs(){
   const txt=SONGS.map(s=>[s.artist,s.title,s.year,s.id].join(' | ')).join('\n');
   modal(`<h2>🎼 Nummers bewerken</h2><p class="mut">Eén per regel: <code>Artiest | Titel | Jaar | YouTube-link of -ID (optioneel)</code>. Zonder link opent het spel een YouTube-zoekopdracht (start het eerste resultaat). Met een link speelt het verborgen in het spel.</p>
