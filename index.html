@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hitlijn – muziekspel</title>
+<style>
+:root{--bg:#120a26;--card:#1f1440;--card2:#2a1b57;--ink:#f4efff;--mut:#a89cd0;--acc:#ff3d9a;--acc2:#27d3c3;--gold:#ffc83d;--bad:#ff5a5a;--ok:#3ddc84}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 20% -10%,#3a1c7a55,transparent),var(--bg);color:var(--ink);font:16px/1.4 system-ui,Segoe UI,Roboto,sans-serif;min-height:100vh}
+h1,h2,h3{margin:.2em 0}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:.7em 1.1em;background:var(--card2);color:var(--ink)}
+button:hover:not(:disabled){filter:brightness(1.2)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.pri{background:linear-gradient(135deg,var(--acc),#a23dff);font-weight:700}
+.sec{background:var(--acc2);color:#04312d;font-weight:700}
+.ghost{background:transparent;border:1px solid #ffffff30}
+input,textarea,select{font:inherit;background:#0c0620;color:var(--ink);border:1px solid #ffffff30;border-radius:10px;padding:.55em .7em;width:100%}
+textarea{min-height:300px;font-family:ui-monospace,monospace;font-size:13px}
+.wrap{max-width:1100px;margin:0 auto;padding:16px}
+.card{background:var(--card);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 6px 24px #0006}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grow{flex:1}
+.mut{color:var(--mut)}
+.banner{background:#4a2a00;border:1px solid var(--gold);color:#ffe3a3;border-radius:12px;padding:10px 14px;margin:10px 0;font-size:14px}
+.tabs button{flex:1;padding:1em}
+.tabs button.on{background:linear-gradient(135deg,var(--acc),#a23dff);font-weight:700}
+.players{display:flex;gap:8px;flex-wrap:wrap}
+.pl{background:var(--card2);border-radius:14px;padding:8px 12px;border:2px solid transparent;min-width:110px}
+.pl.cur{border-color:var(--gold);box-shadow:0 0 14px #ffc83d55}
+.pl b{display:block}
+.tl{display:flex;gap:6px;overflow-x:auto;padding:10px 2px 14px;align-items:stretch}
+.song{flex:0 0 128px;background:linear-gradient(160deg,#4b2aa8,#2a1b57);border-radius:14px;padding:10px;text-align:center;display:flex;flex-direction:column;justify-content:center;min-height:128px}
+.song .y{font-size:28px;font-weight:800;color:var(--gold)}
+.song .t{font-size:13px;font-weight:700}
+.song .a{font-size:12px;color:var(--mut)}
+.slot{flex:0 0 38px;border:2px dashed #ffffff40;background:transparent;color:var(--mut);border-radius:12px;padding:0;font-size:22px}
+.slot.sel{border-color:var(--acc);background:#ff3d9a33;color:#fff}
+.slot.ch{border-color:var(--acc2);background:#27d3c333}
+.vwrap{position:relative;width:200px;height:120px;margin:0 auto;border-radius:16px;overflow:hidden;background:#000}
+.vwrap iframe,.vwrap #ytp{position:absolute;inset:0;width:100%;height:100%}
+.cover{position:absolute;inset:0;z-index:2;background:radial-gradient(circle,#2a1b57,#120a26);display:flex;align-items:center;justify-content:center;font-size:54px}
+.spin{animation:sp 2.4s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.reveal{text-align:center}
+.reveal .y{font-size:56px;font-weight:900;color:var(--gold)}
+.chk{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.chk label{background:var(--card2);padding:8px 12px;border-radius:12px;cursor:pointer;display:flex;gap:6px;align-items:center}
+.chk input{width:auto}
+.cat{display:inline-block;padding:.35em .8em;border-radius:99px;font-weight:700;color:#10062a}
+.c0{background:#ff7a59}.c1{background:#ffc83d}.c2{background:#4cd964}.c3{background:#38bdf8}.c4{background:#c084fc}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;max-width:260px}
+.cell{aspect-ratio:1;border-radius:8px;font-size:10px;display:flex;align-items:center;justify-content:center;text-align:center;color:#10062a;font-weight:700;border:2px solid transparent;padding:2px;line-height:1.05}
+.cell.mk{background:#fff!important;color:#fff;position:relative}
+.cell.mk::after{content:"✔";position:absolute;color:#10062a;font-size:20px}
+.cell.pick{border-color:#fff;animation:pu 1s infinite;cursor:pointer}
+@keyframes pu{50%{transform:scale(1.1)}}
+.cards{display:flex;gap:16px;flex-wrap:wrap}
+.cards>div{background:var(--card2);padding:10px;border-radius:14px}
+.cards>div.cur{outline:2px solid var(--gold)}
+.modal{position:fixed;inset:0;background:#000c;z-index:50;display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:20px}
+.modal>div{background:var(--card);border-radius:18px;padding:20px;max-width:760px;width:100%}
+.big{font-size:22px}
+.disco{font-size:90px;text-align:center}
+ul{padding-left:1.2em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎧 Hitlijn <span class="mut" style="font-size:.5em;font-weight:400">— raad het jaar, bouw je tijdlijn</span></h1>
+  <div id="pcard" class="card" style="text-align:center;display:none">
+   <div class="vwrap"><div id="ytp"></div><div class="cover"><span>💿</span></div></div>
+   <div class="row" style="justify-content:center;margin-top:10px">
+     <button onclick="ytToggle()">⏯ Pauze / Verder</button><button onclick="ytRestart()">↺ Opnieuw</button><button class="ghost" onclick="popupPlay(G.song)">🪟 Los venster</button>
+   </div>
+   <p id="popnote" style="display:none">🎵 De muziek speelt in het <b>kleine YouTube-venster</b>. Laat dat venster open en kijk er niet naar. Klik op de knop als het niet vanzelf start.</p>
+   <div id="perr" class="banner" style="display:none"><span></span> <button class="ghost" onclick="setPopupMode(true)">🪟 Speel in los venster</button> <button class="ghost" onclick="openSearch(G.song)">🔎 Zoek op YouTube</button></div>
+  </div>
+  <div id="app"></div>
+</div>
+<div id="modal"></div>
+
+<script>
+/* ---------- Nummers: [artiest, titel, jaar, youtube-id (optioneel)] ---------- */
+const DEFAULT_SONGS=[
+["Queen","Another One Bites the Dust",1980,"rY0WxgSXdEE"],["Normaal","Oerend Hard",1980],["Journey","Don't Stop Believin'",1981,"1k8craCGpgs"],
+["Phil Collins","In the Air Tonight",1981],["Kim Carnes","Bette Davis Eyes",1981],["Men at Work","Down Under",1981],
+["Survivor","Eye of the Tiger",1982,"btPJPFnesV4"],["Toto","Africa",1982,"FTQbiNvZqaY"],["Duran Duran","Hungry Like the Wolf",1982],
+["Doe Maar","Smoorverliefd",1982],["Het Goede Doel","België",1982],["Michael Jackson","Thriller",1982,"sOnqjkJTMaA"],
+["Hall & Oates","Maneater",1982],["Michael Jackson","Billie Jean",1983,"Zi_XLOBDo_Y"],["Michael Jackson","Beat It",1983,"oRdxUFDoQe0"],
+["Eurythmics","Sweet Dreams (Are Made of This)",1983,"qeMFqkcPYcg"],["Cyndi Lauper","Girls Just Want to Have Fun",1983,"PIb6AZdTr-A"],["Bonnie Tyler","Total Eclipse of the Heart",1983],
+["Paul Young","Wherever I Lay My Hat",1983],["Culture Club","Karma Chameleon",1983],["The Police","Every Breath You Take",1983],
+["Frankie Goes to Hollywood","Relax",1983],["Madonna","Like a Virgin",1984],["Prince","Purple Rain",1984],
+["George Michael","Careless Whisper",1984,"izGwDsrQ1eQ"],["Wham!","Last Christmas",1984,"E8gmARGvPlI"],["Tina Turner","What's Love Got to Do with It",1984],
+["Lionel Richie","Hello",1984],["Van Halen","Jump",1984],["A-ha","Take on Me",1985,"djV11Xbc914"],
+["Dire Straits","Money for Nothing",1985],["Kate Bush","Running Up That Hill",1985],["Tears for Fears","Everybody Wants to Rule the World",1985],
+["Simple Minds","Don't You (Forget About Me)",1985],["Pet Shop Boys","West End Girls",1985],["Europe","The Final Countdown",1986,"9jK-NcRmVcw"],
+["Bon Jovi","Livin' on a Prayer",1986,"lDK9QqIzhwk"],["Falco","Rock Me Amadeus",1986],["Peter Gabriel","Sledgehammer",1986],
+["Bon Jovi","You Give Love a Bad Name",1986],["Guns N' Roses","Sweet Child O' Mine",1987,"1w7OgIMMRc4"],["Rick Astley","Never Gonna Give You Up",1987,"dQw4w9WgXcQ"],
+["Whitney Houston","I Wanna Dance with Somebody",1987,"eH3giaIzONA"],["Madonna","Like a Prayer",1989,"79fzeNUqQbQ"],["Depeche Mode","Enjoy the Silence",1990],
+["Madonna","Vogue",1990],["Nirvana","Smells Like Teen Spirit",1991,"hTWKbfoikeg"],["Metallica","Nothing Else Matters",1991,"tAGnKpE4NCI"],
+["R.E.M.","Losing My Religion",1991],["Michael Jackson","Black or White",1991],["Bryan Adams","(Everything I Do) I Do It for You",1991],
+["Right Said Fred","I'm Too Sexy",1991],["Red Hot Chili Peppers","Under the Bridge",1992,"GLvohMXgcBo"],["Radiohead","Creep",1992],
+["Snap!","Rhythm Is a Dancer",1992],["Dr. Alban","It's My Life",1992],["Whitney Houston","I Will Always Love You",1992],
+["Haddaway","What Is Love",1993,"HEXWRTEbj1I"],["2 Unlimited","No Limit",1993],["Whigfield","Saturday Night",1993],
+["Los del Río","Macarena",1993],["Ace of Base","The Sign",1993],["Marco Borsato","Dromen Zijn Bedrog",1994],
+["Green Day","Basket Case",1994,"NUTGr5t3MoY"],["Mariah Carey","All I Want for Christmas Is You",1994,"yXQViqx6GMY"],["Blur","Song 2",1994],
+["Oasis","Wonderwall",1995,"bx1Bh8ZvH84"],["Coolio","Gangsta's Paradise",1995,"fPO76Jlnz6c"],["Take That","Back for Good",1995],
+["Alanis Morissette","Ironic",1995],["Spice Girls","Wannabe",1996,"gJLIiF15wjQ"],["Gala","Freed from Desire",1996],
+["Fugees","Killing Me Softly",1996],["Prodigy","Firestarter",1996],["Aqua","Barbie Girl",1997,"ZyhrYis509A"],
+["Celine Dion","My Heart Will Go On",1997],["Anouk","Nobody's Wife",1997],["Savage Garden","Truly Madly Deeply",1997],
+["Robbie Williams","Angels",1997],["Verve","Bitter Sweet Symphony",1997],["Eiffel 65","Blue (Da Ba Dee)",1998,"68ugkg9RePc"],
+["Britney Spears","...Baby One More Time",1998,"C-u5WLJ9Yk4"],["The Offspring","Pretty Fly (for a White Guy)",1998],["Cher","Believe",1998],
+["Vengaboys","Boom, Boom, Boom!!",1998],["Backstreet Boys","I Want It That Way",1999,"4fndeDfaWCg"],["TLC","No Scrubs",1999,"FrLequ6dUdM"],
+["Lou Bega","Mambo No. 5",1999],["Ricky Martin","Livin' la Vida Loca",1999],["Santana","Smooth",1999],
+["Coldplay","Yellow",2000,"yKNxeF4KMsY"],["Daft Punk","One More Time",2000,"FGBhQbmPwH8"],["Linkin Park","In the End",2000,"eVTXPUF4Oz4"],
+["Guus Meeuwis","Het Is Een Nacht",2000],["Shakira","Whenever, Wherever",2001],["Kylie Minogue","Can't Get You Out of My Head",2001],
+["Destiny's Child","Survivor",2001],["Alicia Keys","Fallin'",2001],["Eminem","Lose Yourself",2002],
+["Avril Lavigne","Complicated",2002,"5NPBIwQyPWE"],["Eminem","Without Me",2002],["Justin Timberlake","Cry Me a River",2002],
+["Christina Aguilera","Dirrty",2002],["Beyoncé","Crazy in Love",2003,"ViwtNLUqkMY"],["OutKast","Hey Ya!",2003,"PWgvGjAhvIw"],
+["The Killers","Mr. Brightside",2003,"gGdGFtwCNBE"],["The White Stripes","Seven Nation Army",2003,"0J2QdDbelmY"],["50 Cent","In da Club",2003,"5qm8PH4xAss"],
+["Britney Spears","Toxic",2003,"LOZuxwVk7TU"],["Kane","Rain Down on Me",2003],["Evanescence","Bring Me to Life",2003],
+["Usher","Yeah!",2004,"GxBSyx85Kp8"],["Kelly Clarkson","Since U Been Gone",2004,"R7UrFqmfw8A"],["Green Day","Boulevard of Broken Dreams",2004,"Soa3gO7tL-c"],
+["Maroon 5","This Love",2004],["Franz Ferdinand","Take Me Out",2004],["Gwen Stefani","Hollaback Girl",2005],
+["Mariah Carey","We Belong Together",2005],["Shakira","Hips Don't Lie",2006,"DUT5rEU6pqM"],["Amy Winehouse","Rehab",2006],
+["Gnarls Barkley","Crazy",2006],["The Opposites","Slaap",2006],["Rihanna","SOS",2006],
+["Justin Timberlake","SexyBack",2006],["Rihanna","Umbrella",2007,"CvBfHwUxHIk"],["Timbaland ft. OneRepublic","Apologize",2007],
+["Kanye West","Stronger",2007],["Leona Lewis","Bleeding Love",2007],["Coldplay","Viva la Vida",2008,"dvgZkm1xWPE"],
+["Lady Gaga","Poker Face",2008,"bESGLojNYSo"],["Katy Perry","I Kissed a Girl",2008],["Lady Gaga","Just Dance",2008],
+["Kings of Leon","Use Somebody",2008],["Lady Gaga","Bad Romance",2009,"qrO4YZeyl0I"],["Black Eyed Peas","I Gotta Feeling",2009,"uSD4vsh1zDA"],
+["Jay-Z & Alicia Keys","Empire State of Mind",2009],["Pitbull","I Know You Want Me",2009],["Adele","Rolling in the Deep",2010,"rYEDa3JcQqw"],
+["Bruno Mars","Just the Way You Are",2010,"LjhCEhWiKXk"],["Katy Perry","Firework",2010,"QGJuMBdaqIw"],["The Opposites","Licht Uit",2010],
+["The Opposites","Broodje Bakpao",2010],["Adele","Someone Like You",2011,"hLQl3WQQoQ0"],["Carly Rae Jepsen","Call Me Maybe",2011,"fWNaR-rxAic"],
+["Maroon 5","Moves Like Jagger",2011,"iEPTlhBmwRg"],["Gotye","Somebody That I Used to Know",2011,"8UVNT4wvIGY"],["Calvin Harris & Rihanna","We Found Love",2011],
+["David Guetta ft. Sia","Titanium",2011],["Psy","Gangnam Style",2012,"9bZkp7q19f0"],["Nick & Simon","Hallo Wereld",2012],
+["Rihanna","Diamonds",2012],["Pharrell Williams","Happy",2013,"ZbZSe6N_BXs"],["Avicii","Wake Me Up",2013,"IcrbM1l_BoI"],
+["Daft Punk","Get Lucky",2013,"5NV6Rdv1a3I"],["Martin Garrix","Animals",2013],["OneRepublic","Counting Stars",2013,"hT_nvWreIhg"],
+["Robin Thicke","Blurred Lines",2013],["Lorde","Royals",2013],["Taylor Swift","Shake It Off",2014,"nfWlot6h_JM"],
+["Mark Ronson ft. Bruno Mars","Uptown Funk",2014,"OPf0YbXqDm0"],["Ed Sheeran","Thinking Out Loud",2014,"lp-EO5I60KA"],["Clean Bandit","Rather Be",2014],
+["Sam Smith","Stay with Me",2014],["Meghan Trainor","All About That Bass",2014],["Adele","Hello",2015,"YQHsXMglC9A"],
+["Wiz Khalifa","See You Again",2015,"RgKAFK5djSk"],["Twenty One Pilots","Stressed Out",2015,"pXRviuL6vMY"],["Justin Bieber","Sorry",2015,"fRh_vgS2dFE"],
+["Drake","Hotline Bling",2015,"uxpDa-c-4Mc"],["Fetty Wap","Trap Queen",2015],["Major Lazer & DJ Snake","Lean On",2015],
+["Mike Posner","I Took a Pill in Ibiza",2015],["Zara Larsson","Lush Life",2015],["Lukas Graham","7 Years",2015],
+["Lil Kleine & Ronnie Flex","Drank & Drugs",2016],["Sia","Cheap Thrills",2016,"nYh-n7EOtMA"],["The Chainsmokers","Closer",2016,"0zGcUoRlhmw"],
+["Lizzo","Good as Hell",2016],["Shawn Mendes","Treat You Better",2016],["Rihanna ft. Drake","Work",2016],
+["Justin Timberlake","Can't Stop the Feeling!",2016],["Ed Sheeran","Shape of You",2017,"JGwWNGJdvx8"],["Luis Fonsi","Despacito",2017,"kJQP7kiw5Fk"],
+["Imagine Dragons","Believer",2017,"7wtfhZwyrcc"],["Camila Cabello","Havana",2017,"BQ0mxQXmLsk"],["Ed Sheeran","Perfect",2017,"2Vv-BfVoq4g"],
+["Kygo & Selena Gomez","It Ain't Me",2017],["Martin Garrix & Dua Lipa","Scared to Be Lonely",2017],["Bløf & Geike Arnaert","Zoutelande",2018],
+["Lewis Capaldi","Someone You Loved",2018,"zABLecsR5UE"],["Lady Gaga & Bradley Cooper","Shallow",2018,"bo_efYhYU2A"],["Post Malone & Swae Lee","Sunflower",2018,"ApXoWvfEYVU"],
+["Lil Nas X","Old Town Road",2019,"w2Ov5jzm3j8"],["The Weeknd","Blinding Lights",2019,"4NRXx6U8ABQ"],["Billie Eilish","bad guy",2019,"DyDfgMOUjCI"],
+["Dua Lipa","Don't Start Now",2019,"oygrmJFKYZY"],["Harry Styles","Watermelon Sugar",2019,"E07s5ZYygMg"],["Duncan Laurence","Arcade",2019],
+["Tones and I","Dance Monkey",2019,"q0hyYWKXF0Q"],["Post Malone","Circles",2019,"wXhTHyIgQ_U"],["Doja Cat","Say So",2019],
+["Ariana Grande","7 rings",2019],["Mabel","Don't Call Me Up",2019],["Dua Lipa","Levitating",2020,"TUVcZfQe-Kw"],
+["Glass Animals","Heat Waves",2020,"mRD0-GxqHVo"],["Oliver Tree","Life Goes On",2020],["Oliver Tree","Miracle Man",2020],
+["Oliver Tree","Cowboys Don't Cry",2020],["Tiësto","The Business",2020],["The Weeknd","Save Your Tears",2020],
+["Olivia Rodrigo","drivers license",2021,"ZmDBbnmKpqQ"],["Oliver Tree & Robin Schulz","Miss You",2021],["Snelle","Smoorverliefd",2021],
+["Lil Nas X","Montero",2021],["Måneskin","Beggin'",2021],["Ed Sheeran","Bad Habits",2021],
+["Adele","Easy on Me",2021],["Harry Styles","As It Was",2022,"H5v3kku4y6Q"],["Taylor Swift","Anti-Hero",2022,"b1kbLwvqugk"],
+["Miley Cyrus","Flowers",2023,"G7KNmW9a75Y"],["Sabrina Carpenter","Espresso",2024,"eVli-tstM5E"],["Lady Gaga & Bruno Mars","Die With a Smile",2024,"kPa7bsKwL-c"],
+["Rosé & Bruno Mars","APT.",2024,"ekr2nIex040"],["Joost","Europapa",2024],["Doechii","Anxiety",2024],
+["Billie Eilish","Birds of a Feather",2024],["Chappell Roan","Good Luck, Babe!",2024],["Shaboozey","A Bar Song (Tipsy)",2024]
+].map(s=>({artist:s[0],title:s[1],year:s[2],id:s[3]||''}));
+
+/* ---------- opslag ---------- */
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+let SONGS=store.get('hl_songs',null)||DEFAULT_SONGS;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+
+/* ---------- YouTube-speler (verborgen, alleen audio is relevant) ---------- */
+const YTP={p:null,ready:false,pending:null,err:null};
+function ytInit(){
+  if(YTP.p||!document.getElementById('ytp'))return;
+  const pv={playsinline:1,controls:0,rel:0,disablekb:1,fs:0};
+  if(location.protocol.startsWith('http'))pv.origin=location.origin;
+  YTP.p=new YT.Player('ytp',{width:'200',height:'120',playerVars:pv,events:{
+    onReady:()=>{YTP.ready=true;if(YTP.pending){YTP.p.loadVideoById(YTP.pending);YTP.pending=null}},
+    onError:e=>{ytFail(e.data)},
+    onStateChange:e=>{const c=$('.cover span');if(c)c.classList.toggle('spin',e.data===1)}
+  }});
+}
+function ytLoadApi(){
+  if(popupMode())return;
+  if(window.YT&&YT.Player)return ytInit();
+  if(document.getElementById('ytapi'))return;
+  window.onYouTubeIframeAPIReady=ytInit;
+  const s=document.createElement('script');s.id='ytapi';s.src='https://www.youtube.com/iframe_api';
+  s.onerror=()=>ytFail('offline');document.head.appendChild(s);
+}
+function ytFail(code){
+  const m={offline:'Geen internet: YouTube kan niet laden.',153:'YouTube blokkeert afspelen vanuit een los bestand. Start het spel via serve.py (zie hierboven).',101:'De eigenaar staat insluiten niet toe.',150:'De eigenaar staat insluiten niet toe.',100:'Video niet gevonden.'};
+  YTP.err=m[code]||('Afspeelfout ('+code+').');
+  const b=$('#perr');if(b){b.style.display='block';b.firstElementChild.textContent=YTP.err}
+}
+function searchUrl(s){return 'https://www.youtube.com/results?search_query='+encodeURIComponent(s.artist+' '+s.title+' official audio')}
+function openSearch(s){window.open(searchUrl(s),'hl_yt')}
+function videoId(s){const o=store.get('hl_override',{});return o[s.artist+'|'+s.title]||s.id}
+function popupMode(){return store.get('hl_popup',location.protocol==='file:')}
+function embedUrl(id){return 'https://www.youtube.com/embed/'+id+'?autoplay=1&rel=0'}
+function popupPlay(s){
+  const id=videoId(s||G.song);
+  if(!id){openSearch(s||G.song);return}
+  window.open('https://www.youtube.com/watch?v='+id+'&autoplay=1','hl_yt','popup=yes,width=420,height=250,left=40,top=40');
+}
+function setPopupMode(on){store.set('hl_popup',on);if(on)popupPlay(G.song)}
+function playSong(s){
+  if(popupMode()){popupPlay(s);return}
+  YTP.err=null;const b=$('#perr');if(b)b.style.display='none';
+  const id=videoId(s);
+  if(!id){ytFail('geen id');$('#perr').firstElementChild.textContent='Voor dit nummer is geen YouTube-video gekoppeld; het zoekresultaat is geopend in een tabblad (start het eerste resultaat en kom terug).';$('#perr').style.display='block';openSearch(s);return}
+  if(YTP.ready)YTP.p.loadVideoById(id);else{YTP.pending=id;ytLoadApi()}
+}
+function ytToggle(){if(!YTP.ready)return;const st=YTP.p.getPlayerState();st===1?YTP.p.pauseVideo():YTP.p.playVideo()}
+function ytRestart(){if(YTP.ready){YTP.p.seekTo(0,true);YTP.p.playVideo()}}
+function ytStop(){if(YTP.ready)YTP.p.pauseVideo()}
+function playerHtml(){return ''}
+
+/* ---------- spelstatus ---------- */
+let G=null;
+const CATS=[{k:'decade',n:'Decennium',q:'In welk decennium is dit nummer uitgekomen?'},{k:'artist',n:'Artiest',q:'Wie zingt dit?'},{k:'title',n:'Titel',q:'Hoe heet dit nummer?'},{k:'year',n:'Exact jaar',q:'In welk jaar is dit uitgekomen?'},{k:'ba',n:'Voor / na 2000',q:'Is dit nummer van vóór of ná 2000?'}];
+function catAnswer(c,s){
+  switch(c){case 'decade':return Math.floor(s.year/10)*10+"'s";case 'artist':return s.artist;case 'title':return s.title;case 'year':return s.year;case 'ba':return s.year<2000?'Vóór 2000':'Vanaf 2000'}
+}
+
+function newGame(mode,names,opts){
+  G={mode,players:names.map(n=>({name:n,tl:[],tokens:2,card:null,marks:{}})),cur:0,deck:shuffle(SONGS),song:null,phase:'draw',target:opts.target,log:[]};
+  if(mode==='classic'){G.players.forEach(p=>{p.tl=[drawCard()]})}
+  else{G.phase='spin';G.players.forEach(p=>{p.card=makeCard()});G.cat=null;G.contenders=null;G.pending=[]}
+  render();
+}
+function drawCard(){if(!G.deck.length)G.deck=shuffle(SONGS);return G.deck.pop()}
+function makeCard(){
+  const cats=shuffle(CATS.map(c=>c.k)).slice(0,4),rp=shuffle([0,1,2,3]),cp=shuffle([0,1,2,3]);
+  return rp.map((r,i)=>cp.map((c,j)=>({cat:cats[(r+c)%4],on:false})));
+}
+
+/* ---------- schermen ---------- */
+function render(){
+  const app=$('#app');
+  const showP=G&&['place','placed','listen','reveal','mark'].includes(G.phase)&&!G.bought;
+  $('#pcard').style.display=showP?'block':'none';
+  document.querySelector('.vwrap').style.display=popupMode()?'none':'block';
+  $('#popnote').style.display=popupMode()?'block':'none';
+  if(!G){app.innerHTML=setupHtml();return}
+  app.innerHTML=G.mode==='classic'?classicHtml():bingoHtml();
+}
+let setup={mode:'classic',names:['Speler 1','Speler 2','Speler 3'],target:10};
+function setupHtml(){
+  const warn=location.protocol==='file:'?`<div class="banner">ℹ️ Je opent het bestand direct, dan speelt de muziek in een los YouTube-venster. Wil je dat de muziek <b>onzichtbaar op de achtergrond</b> speelt? Start het spel dan met <b>start.bat</b> (Windows) of <b>start.command</b> (Mac).</div>`:'';
+  return `${warn}
+  <div class="card"><div class="row tabs">
+    <button class="${setup.mode=='classic'?'on':''}" onclick="setup.mode='classic';render()">🎶 Klassiek<br><small>tijdlijn bouwen</small></button>
+    <button class="${setup.mode=='bingo'?'on':''}" onclick="setup.mode='bingo';render()">🪩 Bingo<br><small>discobal & scorekaart</small></button></div></div>
+  <div class="card"><h3>Spelers (2–10)</h3>
+    ${setup.names.map((n,i)=>`<div class="row" style="margin:6px 0"><input value="${esc(n)}" oninput="setup.names[${i}]=this.value"><button class="ghost" onclick="setup.names.splice(${i},1);render()" ${setup.names.length<=2?'disabled':''}>✕</button></div>`).join('')}
+    <button class="ghost" onclick="if(setup.names.length<10){setup.names.push('Speler '+(setup.names.length+1));render()}">+ Speler</button>
+  </div>
+  ${setup.mode=='classic'?`<div class="card"><h3>Winnen bij</h3><select onchange="setup.target=+this.value"><option value="7" ${setup.target==7?'selected':''}>7 kaarten (kort)</option><option value="10" ${setup.target==10?'selected':''}>10 kaarten (normaal)</option><option value="15" ${setup.target==15?'selected':''}>15 kaarten (lang)</option></select></div>`:''}
+  <div class="row">
+    <button class="pri big grow" onclick="startGame()">▶ Start spel</button>
+    <button onclick="showRules()">📖 Spelregels</button>
+    <button onclick="showSongs()">🎼 Nummers (${SONGS.length})</button>
+  </div>
+  <p class="mut">Top 40-hits van 1980 tot nu (ook Nederlands). Muziek komt van YouTube. Log in op YouTube Premium in <i>dezelfde browser</i> dan speelt alles zonder reclame. De nummers/jaartallen staan lokaal in dit spel.</p>`;
+}
+function startGame(){
+  const names=setup.names.map((n,i)=>n.trim()||'Speler '+(i+1));
+  newGame(setup.mode,names,{target:setup.target});
+}
+
+/* ---- klassiek ---- */
+function tlHtml(p,sel){
+  let h='';
+  const n=p.tl.length;
+  for(let i=0;i<=n;i++){
+    const chIdx=G.challenges?G.challenges.findIndex(c=>c.slot===i):-1;
+    const isSel=sel&&G.slot===i;
+    const clickable=sel&&(G.phase==='place'||(G.phase==='placed'&&G.chPick!=null));
+    h+=`<button class="slot ${isSel?'sel':''} ${chIdx>=0?'ch':''}" ${clickable?`onclick="pickSlot(${i})"`:'disabled'} title="Hier plaatsen">${isSel?'🎵':chIdx>=0?'⚔️':'+'}</button>`;
+    if(i<n){const s=p.tl[i];h+=`<div class="song"><div class="y">${s.year}</div><div class="t">${esc(s.title)}</div><div class="a">${esc(s.artist)}</div></div>`}
+  }
+  return `<div class="tl">${h}</div>`;
+}
+function scoreHtml(){
+  return `<div class="players">${G.players.map((p,i)=>`<div class="pl ${i===G.cur?'cur':''}"><b>${esc(p.name)}</b>${G.mode==='classic'?`🃏 ${p.tl.length}/${G.target} &nbsp; 🪙 ${p.tokens}`:`✔ ${p.card.flat().filter(c=>c.on).length}/16`}</div>`).join('')}</div>`;
+}
+function classicHtml(){
+  const p=G.players[G.cur];let body='';
+  if(G.phase==='end'){
+    const w=G.players[G.winner];
+    return `${scoreHtml()}<div class="card reveal"><div class="disco">🏆</div><h2>${esc(w.name)} wint!</h2><p class="mut">met ${w.tl.length} kaarten in de tijdlijn</p>${tlHtml(w,false)}<button class="pri" onclick="G=null;render()">Nieuw spel</button></div>`;
+  }
+  body+=`<div class="card"><h3>🎯 ${esc(p.name)} is aan de beurt</h3>${tlHtml(p,true)}</div>`;
+  if(G.phase==='draw'){
+    body+=`<div class="card row"><button class="pri big grow" onclick="cDraw()">🎵 Speel volgend nummer</button>
+      <button onclick="cBuy()" ${p.tokens<3?'disabled':''}>🪙3 Koop een kaart</button></div>`;
+  }else{
+    body+=playerHtml();
+    if(G.phase==='place'){
+      body+=`<div class="card"><b>Waar hoort dit nummer in je tijdlijn?</b> Tik op een <b>+</b> hierboven.
+        <div class="row" style="margin-top:10px"><button class="pri" onclick="cConfirm()" ${G.slot==null?'disabled':''}>✔ Plaats hier</button>
+        <button onclick="cSkip()" ${p.tokens<1?'disabled':''}>🪙1 Sla nummer over</button></div></div>`;
+    }else if(G.phase==='placed'){
+      body+=`<div class="card"><b>Uitdagen?</b> Een andere speler mag 🪙1 betalen en kiest een <i>andere</i> plek. Fout? Dan gaat het token verloren.
+        <div class="row" style="margin-top:8px">${G.players.map((q,i)=>i===G.cur?'':`<button class="${G.chPick===i?'sec':''}" ${q.tokens<1||G.challenges.some(c=>c.pid===i)?'disabled':''} onclick="cChallenge(${i})">⚔️ ${esc(q.name)}</button>`).join('')}</div>
+        ${G.chPick!=null?`<p>${esc(G.players[G.chPick].name)}: tik op een plek in de tijdlijn van ${esc(p.name)}.</p>`:''}
+        ${G.challenges.length?`<p class="mut">Uitdagers: ${G.challenges.map(c=>esc(G.players[c.pid].name)).join(', ')}</p>`:''}
+        <div class="chk"><label><input type="checkbox" onchange="G.bonus=this.checked"> ${esc(p.name)} raadde ook <b>titel + artiest</b> goed (+🪙1)</label></div>
+        <button class="pri big" onclick="cReveal()">👁 Onthul antwoord</button></div>`;
+    }else if(G.phase==='reveal'){
+      const s=G.song;
+      body+=`<div class="card reveal"><div class="y">${s.year}</div><div class="big"><b>${esc(s.title)}</b></div><div class="mut">${esc(s.artist)}</div><p class="big">${G.result}</p>
+        <button class="pri big" onclick="cNext()">Volgende speler →</button></div>`;
+    }
+  }
+  return scoreHtml()+body;
+}
+function cDraw(){G.song=drawCard();G.slot=null;G.challenges=[];G.chPick=null;G.bonus=false;G.phase='place';render();playSong(G.song)}
+function pickSlot(i){
+  if(G.phase==='place'){G.slot=i;render();return}
+  if(G.phase==='placed'&&G.chPick!=null){
+    if(i===G.slot||G.challenges.some(c=>c.slot===i)){alert('Kies een andere plek dan eerder gekozen.');return}
+    G.players[G.chPick].tokens--;G.challenges.push({pid:G.chPick,slot:i});G.chPick=null;render();
+  }
+}
+function cConfirm(){G.phase='placed';render()}
+function cChallenge(i){G.chPick=G.chPick===i?null:i;render()}
+function cSkip(){const p=G.players[G.cur];if(p.tokens<1)return;p.tokens--;ytStop();G.song=drawCard();G.slot=null;render();playSong(G.song)}
+function cBuy(){
+  const p=G.players[G.cur];if(p.tokens<3)return;p.tokens-=3;
+  const s=drawCard();p.tl.push(s);p.tl.sort((a,b)=>a.year-b.year);
+  G.song=s;G.phase='reveal';G.result=`🪙 ${esc(p.name)} kocht deze kaart en voegt hem direct (juist geplaatst) toe.`;G.bought=true;
+  if(p.tl.length>=G.target){G.phase='end';G.winner=G.cur}
+  render();
+}
+function okSlot(tl,slot,y){const a=tl[slot-1],b=tl[slot];return (!a||y>=a.year)&&(!b||y<=b.year)}
+function cReveal(){
+  ytStop();
+  const p=G.players[G.cur],s=G.song;let win=null,msg='';
+  if(okSlot(p.tl,G.slot,s.year)){win=G.cur;msg=`✅ Goed! ${esc(p.name)} houdt de kaart.`}
+  else{
+    const c=G.challenges.find(c=>okSlot(p.tl,c.slot,s.year));
+    if(c){win=c.pid;msg=`⚔️ ${esc(p.name)} zat ernaast — ${esc(G.players[c.pid].name)} steelt de kaart!`}
+    else msg=`❌ Fout. De kaart gaat de prullenbak in.`
+  }
+  if(win!==null){const t=G.players[win].tl;t.push(s);t.sort((a,b)=>a.year-b.year)}
+  if(G.bonus&&p.tokens<5){p.tokens++;msg+=` (+🪙 voor titel & artiest)`}
+  G.result=msg;G.phase='reveal';G.bought=false;
+  const w=G.players.find(q=>q.tl.length>=G.target);
+  if(w&&win!==null&&G.players[win].tl.length>=G.target)G.pendingWin=win;
+  render();
+}
+function cNext(){
+  if(G.pendingWin!=null){G.phase='end';G.winner=G.pendingWin;G.pendingWin=null;render();return}
+  G.cur=(G.cur+1)%G.players.length;G.phase='draw';render();
+}
+
+/* ---- bingo ---- */
+function cardHtml(p,pi,pick){
+  return `<div class="grid">${p.card.map((r,ri)=>r.map((c,ci)=>{
+    const cat=CATS.findIndex(x=>x.k===c.cat);
+    const can=pick&&!c.on&&c.cat===G.cat;
+    return `<div class="cell c${cat} ${c.on?'mk':''} ${can?'pick':''}" ${can?`onclick="bMark(${pi},${ri},${ci})"`:''}>${CATS[cat].n}</div>`}).join('')).join('')}</div>`;
+}
+function bingoHtml(){
+  let body='';
+  if(G.phase==='end'){
+    return `${scoreHtml()}<div class="card reveal"><div class="disco">🏆</div><h2>HITSTER-BINGO! ${esc(G.players[G.winner].name)} wint!</h2><div style="display:flex;justify-content:center">${cardHtml(G.players[G.winner],G.winner,false)}</div><br><button class="pri" onclick="G=null;render()">Nieuw spel</button></div>`;
+  }
+  const act=G.contenders?`<div class="banner">⚡ Beslissingsronde: alleen ${G.contenders.map(i=>esc(G.players[i].name)).join(', ')} spelen mee. Wie als enige goed antwoordt wint.</div>`:'';
+  if(G.phase==='spin'){
+    body=`${act}<div class="card" style="text-align:center"><div class="disco ${G.spinning?'spin':''}" id="disco">🪩</div>
+      <button class="pri big" onclick="bSpin()" ${G.spinning?'disabled':''}>Draai de discobal</button></div>`;
+  }else{
+    const c=CATS.find(x=>x.k===G.cat),ci=CATS.indexOf(c);
+    body=`${act}<div class="card" style="text-align:center"><span class="cat c${ci} big">${c.n}</span><p class="big">${c.q}</p><p class="mut">Iedereen antwoordt hardop of schrijft het op. Daarna onthullen.</p></div>`+playerHtml();
+    if(G.phase==='listen'){body+=`<div class="card"><button class="pri big" onclick="bReveal()">👁 Onthul antwoord</button></div>`}
+    if(G.phase==='reveal'){
+      const s=G.song,pool=G.contenders||G.players.map((_,i)=>i);
+      body+=`<div class="card reveal"><div class="y">${s.year}</div><div class="big"><b>${esc(s.title)}</b></div><div class="mut">${esc(s.artist)}</div>
+        <p class="big">Antwoord (${c.n}): <b>${esc(catAnswer(G.cat,s))}</b></p>
+        <p>Wie had het goed?</p><div class="chk" style="justify-content:center">${pool.map(i=>`<label><input type="checkbox" value="${i}" class="okc">${esc(G.players[i].name)}</label>`).join('')}</div>
+        <button class="pri big" onclick="bProcess()">Verwerk</button></div>`;
+    }
+    if(G.phase==='mark'){
+      const pi=G.pending[0];
+      body+=`<div class="card reveal"><h3>✔ ${esc(G.players[pi].name)}: tik een gemarkeerd vakje (${c.n}) op je kaart</h3></div>`;
+    }
+  }
+  const cards=`<div class="card"><h3>Scorekaarten</h3><div class="cards">${G.players.map((p,i)=>`<div class="${i===(G.pending[0]??-1)&&G.phase==='mark'?'cur':''}"><b>${esc(p.name)}</b>${cardHtml(p,i,G.phase==='mark'&&G.pending[0]===i)}</div>`).join('')}</div>
+    <p class="mut">Een rij of kolom met 4 verschillende categorieën vol = HITSTER! Staat de categorie niet op jouw kaart, dan krijg je geen vakje.</p></div>`;
+  return scoreHtml()+body+cards;
+}
+function bSpin(){
+  if(popupMode())window.open('about:blank','hl_yt','popup=yes,width=420,height=250,left=40,top=40');
+  G.spinning=true;render();
+  const el=$('#disco');let n=0;
+  const t=setInterval(()=>{const c=CATS[Math.random()*5|0];el.nextElementSibling&&0;el.title=c.n;n++;
+    if(n>14){clearInterval(t);G.spinning=false;G.cat=CATS[Math.random()*5|0].k;G.song=drawCard();G.phase='listen';render();playSong(G.song)}},150);
+}
+function bReveal(){ytStop();G.phase='reveal';render()}
+function bProcess(){
+  const ok=[...document.querySelectorAll('.okc:checked')].map(x=>+x.value);
+  if(G.contenders){
+    if(ok.length===1){G.phase='end';G.winner=ok[0];render();return}
+    G.phase='spin';render();return;
+  }
+  G.pending=ok.filter(i=>G.players[i].card.flat().some(c=>!c.on&&c.cat===G.cat));
+  if(G.pending.length){G.phase='mark';render()}else bAfter();
+}
+function bMark(pi,r,c){
+  G.players[pi].card[r][c].on=true;G.pending.shift();
+  if(G.pending.length)render();else bAfter();
+}
+function bAfter(){
+  const wins=G.players.map((p,i)=>hasLine(p.card)?i:-1).filter(i=>i>=0);
+  if(wins.length===1){G.phase='end';G.winner=wins[0];render();return}
+  if(wins.length>1){G.contenders=wins}
+  G.cur=(G.cur+1)%G.players.length;G.phase='spin';render();
+}
+function hasLine(card){
+  for(let i=0;i<4;i++){if(card[i].every(c=>c.on))return true;if(card.every(r=>r[i].on))return true}
+  return false;
+}
+
+/* ---------- modals ---------- */
+function modal(h){$('#modal').innerHTML=h?`<div class="modal" onclick="if(event.target===this)modal('')"><div>${h}<p><button class="pri" onclick="modal('')">Sluiten</button></p></div></div>`:''}
+function showRules(){modal(`
+<h2>📖 Spelregels</h2>
+<h3>🎶 Klassiek (tijdlijn)</h3>
+<ul>
+<li>Iedereen start met 1 kaart (jaar zichtbaar) en 🪙2 tokens.</li>
+<li>Op je beurt speelt het spel een nummer af (titel en jaar blijven verborgen). Plaats het op de juiste plek in je tijdlijn: eerder/later dan je kaarten. Zelfde jaar telt als goed.</li>
+<li><b>Goed:</b> je houdt de kaart. <b>Fout:</b> kaart weg.</li>
+<li><b>Tokens:</b> 🪙1 = nummer overslaan (nieuw nummer); 🪙1 = een ander uitdagen door een andere plek te kiezen (zit de beurtspeler fout en jij goed, dan krijg jij de kaart); 🪙3 = direct een kaart kopen. Titel én artiest goed geraden = +🪙1 (max 5).</li>
+<li>Wie als eerste het doel haalt (standaard 10 kaarten) wint.</li></ul>
+<h3>🪩 Bingo</h3>
+<ul>
+<li>Elke speler heeft een scorekaart van 4×4 vakjes. Op elke rij en kolom staan 4 <i>verschillende</i> categorieën.</li>
+<li>Draai de discobal: die bepaalt de categorie — Decennium, Artiest, Titel, Exact jaar of Voor/na 2000.</li>
+<li>Het nummer wordt afgespeeld; iedereen antwoordt. Na de onthulling vink je aan wie het goed had; die spelers markeren één vakje van die categorie op hun kaart.</li>
+<li>Wie als eerste een volledige <b>rij of kolom</b> heeft, roept <b>HITSTER</b> en wint.</li>
+<li><b>Gelijkspel:</b> meerdere spelers tegelijk een lijn? Dan volgen er vragen tussen alleen die spelers: wie als eerste (als enige) goed antwoordt, wint.</li></ul>
+<p class="mut">Bron: de officiële Hitster-Bingo-uitleg (decennium/artiest/exact jaar/voor-na-2000 raden, scorekaarten, discobal, eerste rij of kolom wint; 2–10 spelers; tiebreak = eerste goede antwoord). Het exacte kaartontwerp van de doos wijkt waarschijnlijk af; dit is een speelbare nabootsing. Dit spel is niet gelieerd aan Hitster.</p>`)}
+function showSongs(){
+  const txt=SONGS.map(s=>[s.artist,s.title,s.year,s.id].join(' | ')).join('\n');
+  modal(`<h2>🎼 Nummers bewerken</h2><p class="mut">Eén per regel: <code>Artiest | Titel | Jaar | YouTube-link of -ID (optioneel)</code>. Zonder link opent het spel een YouTube-zoekopdracht (start het eerste resultaat). Met een link speelt het verborgen in het spel.</p>
+  <textarea id="songta">${esc(txt)}</textarea>
+  <div class="row" style="margin-top:8px"><button class="sec" onclick="saveSongs()">Opslaan</button><button class="ghost" onclick="if(confirm('Standaardlijst terugzetten?')){SONGS=DEFAULT_SONGS;store.set('hl_songs',null);try{localStorage.removeItem('hl_songs')}catch(e){};modal('');render()}">Standaard herstellen</button></div>`);
+}
+function saveSongs(){
+  const out=[];
+  for(const line of $('#songta').value.split('\n')){
+    const p=line.split('|').map(x=>x.trim());if(p.length<3||!p[0])continue;
+    const y=parseInt(p[2]);if(!y)continue;
+    let id=p[3]||'';const m=id.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/);if(m)id=m[1];if(id&&!/^[\w-]{11}$/.test(id))id='';
+    out.push({artist:p[0],title:p[1],year:y,id});
+  }
+  if(out.length<10){alert('Minstens 10 nummers nodig.');return}
+  SONGS=out;store.set('hl_songs',out);modal('');render();
+}
+render();ytLoadApi();
+</script>
+</body>
+</html>
